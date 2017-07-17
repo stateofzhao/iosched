@@ -38,11 +38,15 @@ import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.samples.apps.iosched.BuildConfig;
 import com.google.samples.apps.iosched.Config;
 import com.google.samples.apps.iosched.R;
+import com.google.samples.apps.iosched.settings.SettingsUtils;
 
 import java.util.List;
 
+import static com.google.samples.apps.iosched.util.LogUtils.LOGI;
+import static com.google.samples.apps.iosched.util.LogUtils.LOGW;
 import static com.google.samples.apps.iosched.util.LogUtils.makeLogTag;
 
 public class WiFiUtils {
@@ -54,16 +58,13 @@ public class WiFiUtils {
     private static final String TAG = makeLogTag(WiFiUtils.class);
 
     public static void installConferenceWiFi(final Context context) {
-        // Create config
-        WifiConfiguration config = new WifiConfiguration();
-        // Must be in double quotes to tell system this is an ASCII SSID and passphrase.
-        config.SSID = String.format("\"%s\"", Config.WIFI_SSID);
-        config.preSharedKey = String.format("\"%s\"", Config.WIFI_PASSPHRASE);
+        // Create conferenceWifiConfig
+        WifiConfiguration conferenceWifiConfig = getConferenceWifiConfig();
 
-        // Store config
+        // Store conferenceWifiConfig.
         final WifiManager wifiManager =
                 (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-        int netId = wifiManager.addNetwork(config);
+        int netId = wifiManager.addNetwork(conferenceWifiConfig);
         if (netId != -1) {
             wifiManager.enableNetwork(netId, false);
             boolean result = wifiManager.saveConfiguration();
@@ -81,6 +82,23 @@ public class WiFiUtils {
         }
     }
 
+    public static void uninstallConferenceWiFi(final Context context) {
+        // Create conferenceConfig
+        WifiConfiguration conferenceConfig = getConferenceWifiConfig();
+
+        WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+
+        List<WifiConfiguration> configuredNetworks = wifiManager.getConfiguredNetworks();
+        if (configuredNetworks != null) {
+            for (WifiConfiguration wifiConfig: configuredNetworks) {
+                if (wifiConfig.SSID.equals(conferenceConfig.SSID)) {
+                    LOGW(TAG, "Removing network: " + wifiConfig.networkId);
+                    wifiManager.removeNetwork(wifiConfig.networkId);
+                }
+            }
+        }
+    }
+
     /**
      * Helper method to decide whether to bypass conference WiFi setup.  Return true if
      * WiFi AP is already configured (WiFi adapter enabled) or WiFi configuration is complete
@@ -94,7 +112,7 @@ public class WiFiUtils {
         if (wifiManager.isWifiEnabled()) {
             // Check for existing APs.
             final List<WifiConfiguration> configs = wifiManager.getConfiguredNetworks();
-            final String conferenceSSID = String.format("\"%s\"", Config.WIFI_SSID);
+            final String conferenceSSID = getConferenceWifiConfig().SSID;
             for(WifiConfiguration config : configs) {
                 if (conferenceSSID.equalsIgnoreCase(config.SSID)) return true;
             }
@@ -117,14 +135,14 @@ public class WiFiUtils {
         if (configs == null) return false;
 
         // Check for existing APs.
-        final String conferenceSSID = String.format("\"%s\"", Config.WIFI_SSID);
+        final String conferenceSSID = getConferenceWifiConfig().SSID;
         for(WifiConfiguration config : configs) {
             if (conferenceSSID.equalsIgnoreCase(config.SSID)) return true;
         }
         return false;
     }
 
-    // Stored preferences associated with WiFi AP configuration.
+    // Stored settings_prefs associated with WiFi AP configuration.
     public static String getWiFiConfigStatus(final Context context) {
         final SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
         return sp.getString(PREF_WIFI_AP_CONFIG, null);
@@ -134,7 +152,7 @@ public class WiFiUtils {
         if (!WIFI_CONFIG_DONE.equals(status) && !WIFI_CONFIG_REQUESTED.equals(status))
             throw new IllegalArgumentException("Invalid WiFi Config status: " + status);
         final SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
-        sp.edit().putString(PREF_WIFI_AP_CONFIG, status).commit();
+        sp.edit().putString(PREF_WIFI_AP_CONFIG, status).apply();
     }
 
     public static boolean installWiFiIfRequested(final Context context) {
@@ -236,31 +254,41 @@ public class WiFiUtils {
      * (in the overflow menu, for instance).
      */
     public static boolean shouldOfferToSetupWifi(final Context context, boolean actively) {
-        long now = UIUtils.getCurrentTime(context);
+        long now = TimeUtils.getCurrentTime(context);
         if (now < Config.WIFI_SETUP_OFFER_START) {
-            // too early to offer
+            LOGI(TAG, "Too early to offer wifi");
             return false;
         }
         if (now > Config.CONFERENCE_END_MILLIS) {
-            // too late
+            LOGI(TAG, "Too late to offer wifi");
             return false;
         }
         if (!WiFiUtils.isWiFiEnabled(context)) {
-            // no wifi, no offer
+            LOGI(TAG, "Wifi isn't enabled");
             return false;
         }
-        if (!PrefUtils.isAttendeeAtVenue(context)) {
-            // wifi setup not relevant
+        if (!SettingsUtils.isAttendeeAtVenue(context)) {
+            LOGI(TAG, "Attendee isn't on-site so wifi wouldn't matter");
             return false;
         }
         if (WiFiUtils.isWiFiApConfigured(context)) {
-            // already set up
+            LOGI(TAG, "Attendee is already setup for wifi.");
             return false;
         }
-        if (actively && PrefUtils.hasDeclinedWifiSetup(context)) {
-            // user said no
+        if (actively && SettingsUtils.hasDeclinedWifiSetup(context)) {
+            LOGI(TAG, "Attendee opted out of wifi.");
             return false;
         }
         return true;
+    }
+
+    private static WifiConfiguration getConferenceWifiConfig() {
+        WifiConfiguration conferenceConfig = new WifiConfiguration();
+
+        // Must be in double quotes to tell system this is an ASCII SSID and passphrase.
+        conferenceConfig.SSID = String.format("\"%s\"", BuildConfig.WIFI_SSID);
+        conferenceConfig.preSharedKey = String.format("\"%s\"", BuildConfig.WIFI_PASSPHRASE);
+
+        return conferenceConfig;
     }
 }

@@ -15,6 +15,8 @@
  */
 package com.google.samples.apps.iosched.model;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.samples.apps.iosched.Config;
 import com.google.samples.apps.iosched.provider.ScheduleContract;
 
 public class ScheduleItem implements Cloneable, Comparable<ScheduleItem> {
@@ -23,8 +25,20 @@ public class ScheduleItem implements Cloneable, Comparable<ScheduleItem> {
     public static final int SESSION = 1; // a session
     public static final int BREAK = 2; // a break (lunch, breaks, after-hours party)
 
+    // session types:
+    public static final int SESSION_TYPE_SESSION = 1;
+    public static final int SESSION_TYPE_CODELAB = 2;
+    public static final int SESSION_TYPE_BOXTALK = 3;
+    public static final int SESSION_TYPE_MISC = 4;
+
     // item type
     public int type = FREE;
+
+    // session type
+    public int sessionType = SESSION_TYPE_MISC;
+
+    // main tag
+    public String mainTag;
 
     // start and end time for this item
     public long startTime = 0;
@@ -39,6 +53,7 @@ public class ScheduleItem implements Cloneable, Comparable<ScheduleItem> {
     // title and subtitle
     public String title = "";
     public String subtitle = "";
+    public String room;
 
     // has feedback been given on this session?
     public boolean hasGivenFeedback;
@@ -52,6 +67,7 @@ public class ScheduleItem implements Cloneable, Comparable<ScheduleItem> {
     public static final int FLAG_HAS_LIVESTREAM = 0x01;
     public static final int FLAG_NOT_REMOVABLE = 0x02;
     public static final int FLAG_CONFLICTS_WITH_PREVIOUS = 0x04;
+    public static final int FLAG_CONFLICTS_WITH_NEXT = 0x08;
 
     public void setTypeFromBlockType(String blockType) {
         if (!ScheduleContract.Blocks.isValidBlockType(blockType) ||
@@ -61,6 +77,20 @@ public class ScheduleItem implements Cloneable, Comparable<ScheduleItem> {
             type = BREAK;
         }
     }
+
+    public boolean isKeynote() {
+        return mainTag != null && Config.Tags.SPECIAL_KEYNOTE.equals(mainTag);
+    }
+
+    /**
+     * Public fields cannot be mocked, so in order to being able to write unit tests, this getter
+     * is provided.
+     */
+    @VisibleForTesting
+    public String getTitle() {
+        return title;
+    }
+
 
     @Override
     public Object clone()  {

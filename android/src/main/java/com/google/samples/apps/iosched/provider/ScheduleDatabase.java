@@ -24,12 +24,37 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.provider.BaseColumns;
 
-import com.google.samples.apps.iosched.provider.ScheduleContract.*;
+import com.google.samples.apps.iosched.provider.ScheduleContract.AnnouncementsColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.Blocks;
+import com.google.samples.apps.iosched.provider.ScheduleContract.BlocksColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.Cards;
+import com.google.samples.apps.iosched.provider.ScheduleContract.FeedbackColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.HashtagColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.MapMarkerColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.MapTileColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.MyFeedbackSubmitted;
+import com.google.samples.apps.iosched.provider.ScheduleContract.MySchedule;
+import com.google.samples.apps.iosched.provider.ScheduleContract.MyScheduleColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.MyViewedVideos;
+import com.google.samples.apps.iosched.provider.ScheduleContract.Rooms;
+import com.google.samples.apps.iosched.provider.ScheduleContract.RoomsColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.Sessions;
+import com.google.samples.apps.iosched.provider.ScheduleContract.SessionsColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.Speakers;
+import com.google.samples.apps.iosched.provider.ScheduleContract.SpeakersColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.SyncColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.Tags;
+import com.google.samples.apps.iosched.provider.ScheduleContract.TagsColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.VideoColumns;
+import com.google.samples.apps.iosched.provider.ScheduleContract.Videos;
 import com.google.samples.apps.iosched.sync.ConferenceDataHandler;
 import com.google.samples.apps.iosched.sync.SyncHelper;
 import com.google.samples.apps.iosched.util.AccountUtils;
 
-import static com.google.samples.apps.iosched.util.LogUtils.*;
+import static com.google.samples.apps.iosched.util.LogUtils.LOGD;
+import static com.google.samples.apps.iosched.util.LogUtils.LOGI;
+import static com.google.samples.apps.iosched.util.LogUtils.LOGW;
+import static com.google.samples.apps.iosched.util.LogUtils.makeLogTag;
 
 /**
  * Helper for managing {@link SQLiteDatabase} that stores data for
@@ -45,16 +70,23 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
 
     private static final int VER_2014_RELEASE_A = 122; // app version 2.0.0, 2.0.1
     private static final int VER_2014_RELEASE_C = 207; // app version 2.1.x
-    private static final int CUR_DATABASE_VERSION = VER_2014_RELEASE_C;
+    private static final int VER_2015_RELEASE_A = 208;
+    private static final int VER_2015_RELEASE_B = 210;
+    private static final int VER_2016_RELEASE_A = 211;
+    private static final int VER_2016_RELEASE_B = 212;
+    private static final int CUR_DATABASE_VERSION = VER_2016_RELEASE_B;
 
     private final Context mContext;
 
     interface Tables {
         String BLOCKS = "blocks";
+        String CARDS = "cards";
         String TAGS = "tags";
         String ROOMS = "rooms";
         String SESSIONS = "sessions";
         String MY_SCHEDULE = "myschedule";
+        String MY_VIEWED_VIDEO = "myviewedvideos";
+        String MY_FEEDBACK_SUBMITTED = "myfeedbacksubmitted";
         String SPEAKERS = "speakers";
         String SESSIONS_TAGS = "sessions_tags";
         String SESSIONS_SPEAKERS = "sessions_speakers";
@@ -63,10 +95,8 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
         String MAPTILES = "mapoverlays";
         String HASHTAGS = "hashtags";
         String FEEDBACK = "feedback";
-        String EXPERTS = "experts";
-        String PEOPLE_IVE_MET = "people_ive_met";
+
         String VIDEOS = "videos";
-        String PARTNERS = "partners";
 
         String SESSIONS_SEARCH = "sessions_search";
 
@@ -111,13 +141,21 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
                 + "LEFT OUTER JOIN rooms ON sessions.room_id=rooms.room_id";
 
         // When tables get deprecated, add them to this list (so they get correctly deleted
-        // on database upgrades)
-        interface DeprecatedTables {
-            String TRACKS = "tracks";
-            String SESSIONS_TRACKS = "sessions_tracks";
-            String SANDBOX = "sandbox";
-        };
+        // on database upgrades).
+        enum DeprecatedTables {
+            TRACKS("tracks"),
+            SESSIONS_TRACKS("sessions_tracks"),
+            SANDBOX("sandbox"),
+            PEOPLE_IVE_MET("people_ive_met"),
+            EXPERTS("experts"),
+            PARTNERS("partners");
 
+            String tableName;
+
+            DeprecatedTables(String tableName) {
+                this.tableName = tableName;
+            }
+        };
     }
 
     private interface Triggers {
@@ -128,7 +166,7 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
         String SESSIONS_FEEDBACK_DELETE = "sessions_feedback_delete";
 
         // When triggers get deprecated, add them to this list (so they get correctly deleted
-        // on database upgrades)
+        // on database upgrades).
         interface DeprecatedTriggers {
             String SESSIONS_TRACKS_DELETE = "sessions_tracks_delete";
         };
@@ -157,10 +195,10 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
         String SESSIONS_TAGS_SESSION_ID = Tables.SESSIONS_TAGS + "."
                 + SessionsTags.SESSION_ID;
 
-        String SESSIONS_SPEAKERS_SESSION_ID = Tables.SESSIONS_SPEAKERS+ "."
+        String SESSIONS_SPEAKERS_SESSION_ID = Tables.SESSIONS_SPEAKERS + "."
                 + SessionsSpeakers.SESSION_ID;
 
-        String SESSIONS_SPEAKERS_SPEAKER_ID = Tables.SESSIONS_SPEAKERS+ "."
+        String SESSIONS_SPEAKERS_SPEAKER_ID = Tables.SESSIONS_SPEAKERS + "."
                 + SessionsSpeakers.SPEAKER_ID;
 
         String SPEAKERS_SPEAKER_ID = Tables.SPEAKERS + "." + Speakers.SPEAKER_ID;
@@ -174,6 +212,7 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
         String TAG_ID = "REFERENCES " + Tables.TAGS + "(" + Tags.TAG_ID + ")";
         String ROOM_ID = "REFERENCES " + Tables.ROOMS + "(" + Rooms.ROOM_ID + ")";
         String SESSION_ID = "REFERENCES " + Tables.SESSIONS + "(" + Sessions.SESSION_ID + ")";
+        String VIDEO_ID = "REFERENCES " + Tables.VIDEOS + "(" + Videos.VIDEO_ID + ")";
         String SPEAKER_ID = "REFERENCES " + Tables.SPEAKERS + "(" + Speakers.SPEAKER_ID + ")";
     }
 
@@ -199,7 +238,7 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
                 + TagsColumns.TAG_ID + " TEXT NOT NULL,"
                 + TagsColumns.TAG_CATEGORY + " TEXT NOT NULL,"
                 + TagsColumns.TAG_NAME + " TEXT NOT NULL,"
-                + TagsColumns.TAG_ORDER_IN_CATEGORY  + " INTEGER,"
+                + TagsColumns.TAG_ORDER_IN_CATEGORY + " INTEGER,"
                 + TagsColumns.TAG_COLOR + " TEXT NOT NULL,"
                 + TagsColumns.TAG_ABSTRACT + " TEXT NOT NULL,"
                 + "UNIQUE (" + TagsColumns.TAG_ID + ") ON CONFLICT REPLACE)");
@@ -230,7 +269,7 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
                 + SessionsColumns.SESSION_PDF_URL + " TEXT,"
                 + SessionsColumns.SESSION_NOTES_URL + " TEXT,"
                 + SessionsColumns.SESSION_CAL_EVENT_ID + " INTEGER,"
-                + SessionsColumns.SESSION_LIVESTREAM_URL + " TEXT,"
+                + SessionsColumns.SESSION_LIVESTREAM_ID + " TEXT,"
                 + SessionsColumns.SESSION_TAGS + " TEXT,"
                 + SessionsColumns.SESSION_GROUPING_ORDER + " INTEGER,"
                 + SessionsColumns.SESSION_SPEAKER_NAMES + " TEXT,"
@@ -257,11 +296,11 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE " + Tables.MY_SCHEDULE + " ("
                 + BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + MySchedule.SESSION_ID + " TEXT NOT NULL " + References.SESSION_ID + ","
-                + MySchedule.MY_SCHEDULE_ACCOUNT_NAME + " TEXT NOT NULL ,"
+                + MySchedule.MY_SCHEDULE_ACCOUNT_NAME + " TEXT NOT NULL,"
                 + MySchedule.MY_SCHEDULE_DIRTY_FLAG + " INTEGER NOT NULL DEFAULT 1,"
                 + MySchedule.MY_SCHEDULE_IN_SCHEDULE + " INTEGER NOT NULL DEFAULT 1,"
                 + "UNIQUE (" + MySchedule.SESSION_ID + ","
-                        + MySchedule.MY_SCHEDULE_ACCOUNT_NAME + ") ON CONFLICT REPLACE)");
+                + MySchedule.MY_SCHEDULE_ACCOUNT_NAME + ") ON CONFLICT REPLACE)");
 
         db.execSQL("CREATE TABLE " + Tables.SESSIONS_SPEAKERS + " ("
                 + BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -288,10 +327,10 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
 
         db.execSQL("CREATE TABLE " + Tables.MAPTILES + " ("
                 + BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + MapTileColumns.TILE_FLOOR+ " INTEGER NOT NULL,"
-                + MapTileColumns.TILE_FILE+ " TEXT NOT NULL,"
-                + MapTileColumns.TILE_URL+ " TEXT NOT NULL,"
-                + "UNIQUE (" + MapTileColumns.TILE_FLOOR+ ") ON CONFLICT REPLACE)");
+                + MapTileColumns.TILE_FLOOR + " INTEGER NOT NULL,"
+                + MapTileColumns.TILE_FILE + " TEXT NOT NULL,"
+                + MapTileColumns.TILE_URL + " TEXT NOT NULL,"
+                + "UNIQUE (" + MapTileColumns.TILE_FLOOR + ") ON CONFLICT REPLACE)");
 
         db.execSQL("CREATE TABLE " + Tables.FEEDBACK + " ("
                 + BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -311,12 +350,12 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
 
         db.execSQL("CREATE TABLE " + Tables.MAPMARKERS + " ("
                 + BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + MapMarkerColumns.MARKER_ID+ " TEXT NOT NULL,"
-                + MapMarkerColumns.MARKER_TYPE+ " TEXT NOT NULL,"
-                + MapMarkerColumns.MARKER_LATITUDE+ " DOUBLE NOT NULL,"
-                + MapMarkerColumns.MARKER_LONGITUDE+ " DOUBLE NOT NULL,"
-                + MapMarkerColumns.MARKER_LABEL+ " TEXT,"
-                + MapMarkerColumns.MARKER_FLOOR+ " INTEGER NOT NULL,"
+                + MapMarkerColumns.MARKER_ID + " TEXT NOT NULL,"
+                + MapMarkerColumns.MARKER_TYPE + " TEXT NOT NULL,"
+                + MapMarkerColumns.MARKER_LATITUDE + " DOUBLE NOT NULL,"
+                + MapMarkerColumns.MARKER_LONGITUDE + " DOUBLE NOT NULL,"
+                + MapMarkerColumns.MARKER_LABEL + " TEXT,"
+                + MapMarkerColumns.MARKER_FLOOR + " INTEGER NOT NULL,"
                 + "UNIQUE (" + MapMarkerColumns.MARKER_ID + ") ON CONFLICT REPLACE)");
 
         db.execSQL("CREATE TABLE " + Tables.HASHTAGS + " ("
@@ -346,7 +385,7 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
                 + BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + SessionsSearchColumns.BODY + " TEXT NOT NULL,"
                 + SessionsSearchColumns.SESSION_ID
-                        + " TEXT NOT NULL " + References.SESSION_ID + ","
+                + " TEXT NOT NULL " + References.SESSION_ID + ","
                 + "UNIQUE (" + SessionsSearchColumns.SESSION_ID + ") ON CONFLICT REPLACE,"
                 + "tokenize=porter)");
 
@@ -372,42 +411,66 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
                 "=old." + Sessions.SESSION_ID
                 + ";" + " END;");
 
-        upgradeAtoC(db);
+        upgradeFrom2014Cto2015A(db);
+        upgradeFrom2015Ato2015B(db);
+        upgradeFrom2015Bto2016A(db);
+        upgradeFrom2016Ato2016B(db);
     }
 
-    private void upgradeAtoC(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE " + Tables.EXPERTS + " ("
-                + BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
-                + SyncColumns.UPDATED + " INTEGER NOT NULL, "
-                + ExpertsColumns.EXPERT_ID + " TEXT NOT NULL, "
-                + ExpertsColumns.EXPERT_NAME + " TEXT, "
-                + ExpertsColumns.EXPERT_IMAGE_URL + " TEXT, "
-                + ExpertsColumns.EXPERT_TITLE + " TEXT, "
-                + ExpertsColumns.EXPERT_ABSTRACT + " TEXT, "
-                + ExpertsColumns.EXPERT_URL + " TEXT, "
-                + ExpertsColumns.EXPERT_COUNTRY + " TEXT, "
-                + ExpertsColumns.EXPERT_CITY + " TEXT, "
-                + ExpertsColumns.EXPERT_ATTENDING + " BOOLEAN, "
-                + ExpertsColumns.EXPERT_IMPORT_HASHCODE + " TEXT NOT NULL DEFAULT '', "
-                + "UNIQUE (" + ExpertsColumns.EXPERT_ID + ") ON CONFLICT REPLACE)");
-
-        db.execSQL("CREATE TABLE " + Tables.PEOPLE_IVE_MET + " ("
-                + BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
-                + ScheduleContract.PeopleIveMetColumns.PERSON_ID + " TEXT NOT NULL, "
-                + ScheduleContract.PeopleIveMetColumns.PERSON_TIMESTAMP + " INTEGER NOT NULL, "
-                + ScheduleContract.PeopleIveMetColumns.PERSON_NAME + " TEXT, "
-                + ScheduleContract.PeopleIveMetColumns.PERSON_IMAGE_URL + " TEXT, "
-                + ScheduleContract.PeopleIveMetColumns.PERSON_NOTE + " TEXT, "
-                + "UNIQUE (" + ScheduleContract.PeopleIveMetColumns.PERSON_ID + ") ON CONFLICT REPLACE)");
-
-        db.execSQL("CREATE TABLE " + Tables.PARTNERS + " ("
+    private void upgradeFrom2014Cto2015A(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE " + Tables.MY_FEEDBACK_SUBMITTED + " ("
                 + BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + PartnersColumns.PARTNER_ID + " TEXT NOT NULL,"
-                + PartnersColumns.PARTNER_NAME + " TEXT NOT NULL,"
-                + PartnersColumns.PARTNER_DESC + " TEXT NOT NULL,"
-                + PartnersColumns.PARTNER_WEBSITE_URL + " TEXT NOT NULL,"
-                + PartnersColumns.PARTNER_LOGO_URL + " TEXT NOT NULL,"
-                + "UNIQUE (" + PartnersColumns.PARTNER_ID + ") ON CONFLICT REPLACE)");
+                + MyFeedbackSubmitted.SESSION_ID + " TEXT NOT NULL " + References.SESSION_ID + ","
+                + MyFeedbackSubmitted.MY_FEEDBACK_SUBMITTED_ACCOUNT_NAME + " TEXT NOT NULL,"
+                + MyFeedbackSubmitted.MY_FEEDBACK_SUBMITTED_DIRTY_FLAG + " INTEGER NOT NULL DEFAULT 1,"
+                + "UNIQUE (" + MyFeedbackSubmitted.SESSION_ID + ","
+                + MyFeedbackSubmitted.MY_FEEDBACK_SUBMITTED_ACCOUNT_NAME + ") ON CONFLICT REPLACE)");
+
+        db.execSQL("CREATE TABLE " + Tables.MY_VIEWED_VIDEO + " ("
+                + BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + MyViewedVideos.VIDEO_ID + " TEXT NOT NULL " + References.VIDEO_ID + ","
+                + MyViewedVideos.MY_VIEWED_VIDEOS_ACCOUNT_NAME + " TEXT NOT NULL,"
+                + MyViewedVideos.MY_VIEWED_VIDEOS_DIRTY_FLAG + " INTEGER NOT NULL DEFAULT 1,"
+                + "UNIQUE (" + MyViewedVideos.VIDEO_ID + ","
+                + MyViewedVideos.MY_VIEWED_VIDEOS_ACCOUNT_NAME + ") ON CONFLICT REPLACE)");
+    }
+
+    private void upgradeFrom2015Ato2015B(SQLiteDatabase db) {
+        // Note: SpeakersColumns.SPEAKER_URL is unused in 2015. The columns added here are used
+        // instead.
+        db.execSQL("ALTER TABLE " + Tables.SPEAKERS
+                + " ADD COLUMN " + SpeakersColumns.SPEAKER_PLUSONE_URL + " TEXT");
+        db.execSQL("ALTER TABLE " + Tables.SPEAKERS
+                + " ADD COLUMN " + SpeakersColumns.SPEAKER_TWITTER_URL + " TEXT");
+    }
+
+    private void upgradeFrom2015Bto2016A(SQLiteDatabase db) {
+        // Note: Adding photoUrl to tags
+        db.execSQL("ALTER TABLE " + Tables.TAGS
+                + " ADD COLUMN " + TagsColumns.TAG_PHOTO_URL + " TEXT");
+
+        // Adds a timestamp value to my schedule. Used when syncing and merging local and remote
+        // data with the version having the more recent timestamp assuming precedence.
+        db.execSQL("ALTER TABLE " + Tables.MY_SCHEDULE
+                + " ADD COLUMN " + MyScheduleColumns.MY_SCHEDULE_TIMESTAMP + " DATETIME");
+    }
+
+    private void upgradeFrom2016Ato2016B(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE " + Tables.CARDS + " ("
+                + BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + Cards.ACTION_COLOR + " TEXT, "
+                + Cards.ACTION_TEXT + " TEXT, "
+                + Cards.ACTION_URL + " TEXT, "
+                + Cards.BACKGROUND_COLOR + " TEXT, "
+                + Cards.CARD_ID + " TEXT, "
+                + Cards.DISPLAY_END_DATE + " INTEGER, "
+                + Cards.DISPLAY_START_DATE + " INTEGER, "
+                + Cards.MESSAGE + " TEXT, "
+                + Cards.TEXT_COLOR + " TEXT, "
+                + Cards.TITLE + " TEXT,  "
+                + Cards.ACTION_TYPE + " TEXT,  "
+                + Cards.ACTION_EXTRA + " TEXT, "
+                + "UNIQUE (" + Cards.CARD_ID + ") ON CONFLICT REPLACE)");
     }
 
     /**
@@ -463,17 +526,42 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
         // is a trivial DB upgrade, we set this to false.
         boolean dataInvalidated = true;
 
-        // Check if we can upgrade from release A to release C
-        if (version == VER_2014_RELEASE_A) {
-            // release A format can be upgraded to release C format
-            LOGD(TAG, "Upgrading database from 2014 release A to 2014 release C.");
-            upgradeAtoC(db);
-            version = VER_2014_RELEASE_C;
+        // Check if we can upgrade from release 2014 C to release 2015 A.
+        if (version == VER_2014_RELEASE_C) {
+            LOGD(TAG, "Upgrading database from 2014 release C to 2015 release A.");
+            upgradeFrom2014Cto2015A(db);
+            version = VER_2015_RELEASE_A;
+        }
+
+        // Check if we can upgrade from release 2015 A to release 2015 B.
+        if (version == VER_2015_RELEASE_A) {
+            LOGD(TAG, "Upgrading database from 2015 release A to 2015 release B.");
+            upgradeFrom2015Ato2015B(db);
+            version = VER_2015_RELEASE_B;
+        }
+
+        // Check if we can upgrade from release 2015 B to release 2016 A.
+        if (version == VER_2015_RELEASE_B) {
+            LOGD(TAG, "Upgrading database from 2015 release B to 2016 release A.");
+            upgradeFrom2015Bto2016A(db);
+            version = VER_2016_RELEASE_A;
+        }
+
+        // Check if we can upgrade from release 2015 B to release 2016 A.
+        if (version == VER_2016_RELEASE_A) {
+            LOGD(TAG, "Upgrading database from 2016 release A to 2016 release B.");
+            upgradeFrom2016Ato2016B(db);
+            version = VER_2016_RELEASE_B;
         }
 
         LOGD(TAG, "After upgrade logic, at version " + version);
 
-        // at this point, we ran out of upgrade logic, so if we are still at the wrong
+        // Drop tables that have been deprecated.
+        for (Tables.DeprecatedTables deprecatedTable : Tables.DeprecatedTables.values()) {
+            db.execSQL(("DROP TABLE IF EXISTS " + deprecatedTable.tableName));
+        }
+
+        // At this point, we ran out of upgrade logic, so if we are still at the wrong
         // version, we have no choice but to delete everything and create everything again.
         if (version != CUR_DATABASE_VERSION) {
             LOGW(TAG, "Upgrade unsuccessful -- destroying old data during upgrade");
@@ -490,6 +578,8 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
             db.execSQL("DROP TABLE IF EXISTS " + Tables.SESSIONS);
             db.execSQL("DROP TABLE IF EXISTS " + Tables.SPEAKERS);
             db.execSQL("DROP TABLE IF EXISTS " + Tables.MY_SCHEDULE);
+            db.execSQL("DROP TABLE IF EXISTS " + Tables.MY_FEEDBACK_SUBMITTED);
+            db.execSQL("DROP TABLE IF EXISTS " + Tables.MY_VIEWED_VIDEO);
             db.execSQL("DROP TABLE IF EXISTS " + Tables.SESSIONS_SPEAKERS);
             db.execSQL("DROP TABLE IF EXISTS " + Tables.SESSIONS_TAGS);
             db.execSQL("DROP TABLE IF EXISTS " + Tables.ANNOUNCEMENTS);
@@ -498,14 +588,8 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
             db.execSQL("DROP TABLE IF EXISTS " + Tables.SEARCH_SUGGEST);
             db.execSQL("DROP TABLE IF EXISTS " + Tables.MAPMARKERS);
             db.execSQL("DROP TABLE IF EXISTS " + Tables.MAPTILES);
-            db.execSQL("DROP TABLE IF EXISTS " + Tables.EXPERTS);
             db.execSQL("DROP TABLE IF EXISTS " + Tables.HASHTAGS);
-            db.execSQL("DROP TABLE IF EXISTS " + Tables.PEOPLE_IVE_MET);
             db.execSQL("DROP TABLE IF EXISTS " + Tables.VIDEOS);
-            db.execSQL("DROP TABLE IF EXISTS " + Tables.PARTNERS);
-            db.execSQL("DROP TABLE IF EXISTS " + Tables.DeprecatedTables.TRACKS);
-            db.execSQL("DROP TABLE IF EXISTS " + Tables.DeprecatedTables.SESSIONS_TRACKS);
-            db.execSQL("DROP TABLE IF EXISTS " + Tables.DeprecatedTables.SANDBOX);
 
             onCreate(db);
             version = CUR_DATABASE_VERSION;
@@ -516,7 +600,7 @@ public class ScheduleDatabase extends SQLiteOpenHelper {
             ConferenceDataHandler.resetDataTimestamp(mContext);
             if (account != null) {
                 LOGI(TAG, "DB upgrade complete. Requesting resync.");
-                SyncHelper.requestManualSync(account);
+                SyncHelper.requestManualSync();
             }
         }
     }

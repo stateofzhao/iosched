@@ -1,5 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright 2014 Google Inc. All rights reserved.
+  Copyright 2015 Google Inc. All rights reserved.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -13,24 +14,46 @@
   See the License for the specific language governing permissions and
   limitations under the License.
   -->
-
 <resources>
-
-    <style name="Theme" parent="FrameworkRoot.Theme" /> <!-- doesn't contain the pre-L code from the values/styles.xml -->
-
     <style name="Theme.IOSched" parent="Theme.IOSched.Base">
         <item name="popupItemBackground">@drawable/popup_item_background</item>
         <item name="photoItemForeground">@drawable/photo_item_foreground</item>
         <item name="photoItemForegroundBorderless">@drawable/photo_item_foreground_borderless</item>
-
         <item name="android:navigationBarColor">#000</item>
-        <item name="android:statusBarColor">?colorPrimaryDark</item>
-
         <item name="android:alertDialogTheme">@style/Theme.IOSched.AlertDialog</item>
+        <item name="imageItemBackground">?android:selectableItemBackgroundBorderless</item>
     </style>
 
     <style name="Theme.IOSched.WithNavDrawer" parent="Theme.IOSched">
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="Theme.IOSched.Light" parent="Theme.IOSched.WithNavDrawer">
+        <item name="colorPrimaryDark">@color/dark_status_bar</item>
+    </style>
+
+    <style name="Theme.IOSched.ExploreSessions" parent="Theme.IOSched.Light">
+        <item name="android:windowEnterTransition">@transition/fade_system_chrome</item>
+    </style>
+
+    <style name="Theme.IOSched.VideoLibrary.Filtered">
+        <item name="android:windowEnterTransition">@transition/fade_system_chrome</item>
+    </style>
+
+    <style name="Theme.IOSched.Welcome" parent="Theme.IOSched.Welcome.Base">
+        <item name="android:statusBarColor">@color/dark_status_bar</item>
+        <item name="android:navigationBarColor">@color/welcome_nav_bar</item>
+    </style>
+
+    <style name="Theme.IOSched.SessionDetails.VersionBase"
+           parent="Theme.IOSched.SessionDetails.SizeBase">
+        <item name="android:windowSharedElementEnterTransition">@transition/session_details_shared_enter</item>
+        <item name="android:windowSharedElementReturnTransition">@transition/session_details_shared_return</item>
+        <item name="android:windowEnterTransition">@transition/fade_system_chrome</item>
+
+        <!-- Prevent default status bar backgrounds showing through during transition -->
+        <item name="colorPrimaryDark">@android:color/transparent</item>
     </style>
 
     <style name="Theme.IOSched.AlertDialog" parent="android:Theme.Material.Light.Dialog.Alert">
@@ -46,4 +69,5 @@
     <style name="TabIndicator">
         <item name="android:theme">@style/ActionBarThemeOverlay</item>
     </style>
+
 </resources>

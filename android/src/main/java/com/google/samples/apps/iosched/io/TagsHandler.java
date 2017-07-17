@@ -25,6 +25,7 @@ import com.google.samples.apps.iosched.io.model.Tag;
 import com.google.samples.apps.iosched.provider.ScheduleContract;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.samples.apps.iosched.provider.ScheduleContractHelper;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,7 +50,7 @@ public class TagsHandler extends JSONHandler {
 
     @Override
     public void makeContentProviderOperations(ArrayList<ContentProviderOperation> list) {
-        Uri uri = ScheduleContract.addCallerIsSyncAdapterParameter(
+        Uri uri = ScheduleContractHelper.setUriAsCalledFromSyncAdapter(
                 ScheduleContract.Tags.CONTENT_URI);
 
         // since the number of tags is very small, for simplicity we delete them all and reinsert
@@ -61,8 +62,9 @@ public class TagsHandler extends JSONHandler {
             builder.withValue(ScheduleContract.Tags.TAG_NAME, tag.name);
             builder.withValue(ScheduleContract.Tags.TAG_ORDER_IN_CATEGORY, tag.order_in_category);
             builder.withValue(ScheduleContract.Tags.TAG_ABSTRACT, tag._abstract);
-            builder.withValue(ScheduleContract.Tags.TAG_COLOR, tag.color==null ?
-                    Color.LTGRAY : Color.parseColor(tag.color));
+            builder.withValue(ScheduleContract.Tags.TAG_COLOR, tag.color == null ? 0
+                    : Color.parseColor(tag.color));
+            builder.withValue(ScheduleContract.Tags.TAG_PHOTO_URL, tag.photoUrl);
             list.add(builder.build());
         }
     }

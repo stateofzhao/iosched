@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Google Inc. All rights reserved.
+ * Copyright 2015 Google Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import android.widget.RemoteViews;
 
 import com.google.samples.apps.iosched.R;
 import com.google.samples.apps.iosched.sync.SyncHelper;
-import com.google.samples.apps.iosched.ui.MyScheduleActivity;
+import com.google.samples.apps.iosched.myschedule.MyScheduleActivity;
 import com.google.samples.apps.iosched.ui.TaskStackBuilderProxyActivity;
 import com.google.samples.apps.iosched.util.AccountUtils;
 
@@ -63,7 +63,7 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
             // Trigger sync
             Account chosenAccount = AccountUtils.getActiveAccount(context);
             if (shouldSync && chosenAccount != null) {
-                SyncHelper.requestManualSync(chosenAccount);
+                SyncHelper.requestManualSync();
             }
 
             // Notify the widget that the list view needs to be updated.
