@@ -21,6 +21,8 @@ import static com.google.samples.apps.iosched.util.LogUtils.LOGE;
 import static com.google.samples.apps.iosched.util.LogUtils.makeLogTag;
 
 /**
+ *
+ *
  * Responsible for registering our custom authenticator with the system, and allowing other
  * classes to obtain a handle to our sync account.
  */

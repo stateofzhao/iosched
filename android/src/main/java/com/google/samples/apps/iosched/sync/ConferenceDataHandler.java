@@ -28,7 +28,6 @@ import android.text.TextUtils;
 import com.google.samples.apps.iosched.io.*;
 import com.google.samples.apps.iosched.io.map.model.Tile;
 import com.google.samples.apps.iosched.provider.ScheduleContract;
-import com.google.samples.apps.iosched.util.AccountUtils;
 import com.google.samples.apps.iosched.util.IOUtils;
 import com.google.samples.apps.iosched.util.MapUtils;
 import com.google.gson.JsonParser;
@@ -51,6 +50,10 @@ import com.turbomanage.httpclient.RequestLogger;
 import static com.google.samples.apps.iosched.util.LogUtils.*;
 
 /**
+ * 解析会议数据然后导入到app的ContentProvider中。<P>
+ * 这里要学习一下，这个是一个综合的Handler，
+ * 负责管理和调用其它具体（针对集体会议）真正来解析数据的Handler来进行处理，达到了分而治之的目的<P>
+ *
  * Helper class that parses conference data and imports them into the app's
  * Content Provider.
  */
@@ -76,6 +79,7 @@ public class ConferenceDataHandler {
     private static final String DATA_KEY_HASHTAGS = "hashtags";
     private static final String DATA_KEY_VIDEOS = "video_library";
 
+    //这里学习下，为了写很多if-else语句，这里又将已经声明出来的key放到数组中，这样就可以写循环了
     private static final String[] DATA_KEYS_IN_ORDER = {
             DATA_KEY_ROOMS,
             DATA_KEY_BLOCKS,
@@ -127,6 +131,7 @@ public class ConferenceDataHandler {
             boolean downloadsAllowed) throws IOException {
         LOGD(TAG, "Applying data from " + dataBodies.length + " files, timestamp " + dataTimestamp);
 
+        // 根据不同会议类型来创建具体的处理Handler
         // create handlers for each data type
         mHandlerForKey.put(DATA_KEY_ROOMS, mRoomsHandler = new RoomsHandler(mContext));
         mHandlerForKey.put(DATA_KEY_BLOCKS, mBlocksHandler = new BlocksHandler(mContext));
@@ -148,10 +153,12 @@ public class ConferenceDataHandler {
             processDataBody(dataBodies[i]);
         }
 
+        // 调用SessionsHandler独有的方法，来给其设置其它Handler解析出的数据，一边SessionsHandler来加工处理自己的数据。
         // the sessions handler needs to know the tag and speaker maps to process sessions
         mSessionsHandler.setTagMap(mTagsHandler.getTagMap());
         mSessionsHandler.setSpeakerMap(mSpeakersHandler.getSpeakerMap());
 
+        // 生成Content Provider需要的数据操作
         // produce the necessary content provider operations
         ArrayList<ContentProviderOperation> batch = new ArrayList<ContentProviderOperation>();
         for (String key : DATA_KEYS_IN_ORDER) {
@@ -161,6 +168,7 @@ public class ConferenceDataHandler {
         }
         LOGD(TAG, "Total content provider operations: " + batch.size());
 
+        // 下载或者解析本地 SVG地图覆盖文件
         // download or process local map tile overlay files (SVG files)
         LOGD(TAG, "Processing map overlay files");
         processMapOverlayFiles(mMapPropertyHandler.getTileOverlays(), downloadsAllowed);
@@ -182,9 +190,14 @@ public class ConferenceDataHandler {
             throw new RuntimeException("Error executing content provider batch operation", ex);
         }
 
+        // 学习这里的通知事件，通过ContentResolver来通知更新，解决了 当进入到相关界面时，
+        // 上面的异步数据处理还没有完成，造成数据无法展示的问题。如果进入界面时没有数据，那么当此处调用了
+        // ContentResolver的更新方法后，会再次触发CursorLoader的onLoaded()方法。
+
         // notify all top-level paths
         LOGD(TAG, "Notifying changes on all top-level paths on Content Resolver.");
         ContentResolver resolver = mContext.getContentResolver();
+        // 通知所有关注的界面来更新他们的数据
         for (String path : ScheduleContract.TOP_LEVEL_PATHS) {
             Uri uri = ScheduleContract.BASE_CONTENT_URI.buildUpon().appendPath(path).build();
             resolver.notifyChange(uri, null);
@@ -235,6 +248,8 @@ public class ConferenceDataHandler {
     }
 
     /**
+     * 从本地或者网上同步地图覆盖物文件（SVG图片）<P>
+     *
      * Synchronise the map overlay files either from the local assets (if available) or from a remote url.
      *
      * @param collection Set of tiles containing a local filename and remote url.

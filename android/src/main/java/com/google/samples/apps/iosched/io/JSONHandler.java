@@ -32,6 +32,15 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 
+/**
+ * Json 数据的解析类，包括两个抽象方法，第一个是处理Json数据对应的JsonElement ；
+ * 第二个是将数据存储到ContentProvider中<P>
+ *
+ * 每个Bean都有自己的一个对应的JSONHandler<P>
+ *
+ * JSONHandler只是定义了共有的方法，每个具体实现类还有自己特有的扩展方法，这里可以具体参考学习下<P>
+ *
+ * */
 public abstract class JSONHandler {
 
     protected static Context mContext;
@@ -40,6 +49,8 @@ public abstract class JSONHandler {
         mContext = context;
     }
 
+    //这里学习下，在外部定义出一个ArrayList<ContentProviderOperation>，然后传递给这个方法，
+    // 之后就可以使用被此方法加工完的List来向ContentProvider中添加数据了
     public abstract void makeContentProviderOperations(ArrayList<ContentProviderOperation> list);
 
     public abstract void process(JsonElement element);

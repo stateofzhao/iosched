@@ -11,7 +11,7 @@
   is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
   or implied. See the License for the specific language governing permissions and limitations under
   the License.
--->
+  -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools"
           package="com.google.samples.apps.iosched">
@@ -23,39 +23,38 @@
     See the /doc/MAP.md readme file for further details. -->
 
     <application
-            android:name=".AppApplication"
-            android:label="@string/mapeditor_label"
-            tools:replace="label">
+        android:name=".AppApplication"
+        android:label="@string/mapeditor_label"
+        tools:replace="label">
 
         <!-- Activities -->
         <activity android:name=".map.MapEditorActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
-                <category android:name="android.intent.category.DEFAULT"/>
+               <!-- <category android:name="android.intent.category.DEFAULT"/>-->
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
         <!-- Remove the default launcher and only use the MapEditorActivity -->
-        <activity
-                android:name=".explore.ExploreIOActivity">
+        <!-- <activity
+            android:name=".explore.ExploreIOActivity">
             <intent-filter tools:node="remove">
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-        </activity>
+        </activity>-->
 
         <!-- An IntentService responsible for bootstrapping the app with the necessary
     data such as session, speakers, etc. -->
         <service
-                android:name=".service.LocalRefreshingBootstrapService"
-                android:exported="false"/>
-
+            android:name=".service.LocalRefreshingBootstrapService"
+            android:exported="false"/>
 
     </application>
 
     <uses-permission
-            android:name="android.permission.READ_EXTERNAL_STORAGE"
-            tools:remove="maxSdkVersion"/>
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        tools:remove="maxSdkVersion"/>
 </manifest>

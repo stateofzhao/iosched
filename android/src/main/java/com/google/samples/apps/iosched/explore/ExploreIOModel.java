@@ -247,6 +247,11 @@ public class ExploreIOModel extends ModelWithLoaderManager<ExploreIOModel.Explor
     public void processUserAction(final ExploreIOUserActionEnum action,
             @Nullable final Bundle args, final UserActionCallback callback) {
         /**
+         *
+         * 本model唯一需要响应用户操作就是查询操作{@link #KEY_RUN_QUERY_ID}，但是父类已经处理了这个action，
+         * 所以不需要实现本方法了。
+         * <p/>
+         *
          * The only user action in this model fires off a query (using {@link #KEY_RUN_QUERY_ID},
          * so this method isn't used.
          */

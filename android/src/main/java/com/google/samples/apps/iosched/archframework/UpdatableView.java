@@ -20,9 +20,30 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 
+/*
+* 这个View接口，有一个相应用户操作的接口，可以让Presenter来是实现此接口，然后能够让View直接控制Presenter了，
+* 这样做的好处就是能够让 Presenter 更抽象，而且不必让Presenter实现类来写更多针对 用户操作 的方法。
+*
+* */
+
 /**
+ * UpdatableView 是一个UI接口，通常是一个{@link android.app.Fragment}，{@link android.app.Fragment}会
+ * 提供一个{@link Presenter}（一个用于控制UpdatableView的接口）。
+ * <p/>
+ * 它使用{@link Model}、{@link QueryEnum}和{@link UserActionEnum}来作为参数。
+ * <p/>
+ * 一旦Model中的数据请求完成，{@link Presenter}通过调用{@link #displayData(Object, QueryEnum)}或者
+ * {@link #displayErrorMessage(QueryEnum)}来更新UpdatableView。
+ * <p/>
+ * {@link Presenter}会作为{@link UserActionListener}通过调用{@link #addListener(UserActionListener)}
+ * 方法将它注册给UpdatableView，这样当用户执行一个操作时，就能够触发{@link Model}的更新，当data更新后，
+ * {@link Presenter}通过调用UpdatableView的{@link #displayUserActionResult(Object, UserActionEnum, boolean)}
+ * 方法来更新UpdatableView。
+ * <p/>
+ *
  * An UpdatableView is a UI class, often a {@link android.app.Fragment}, that provides a {@link
- * Presenter} an interface through which to control it  (MVP architectural pattern). It is
+ * Presenter} an interface through which to control it  (MVP architectural pattern).
+ * It is
  * parametrised by the {@link Model} class, the {@link QueryEnum} (the list of queries it needs to
  * run to display its initial state) and the {@link UserActionEnum} (the list of user actions it
  * provides to the user).

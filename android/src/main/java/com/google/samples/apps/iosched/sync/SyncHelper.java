@@ -47,6 +47,8 @@ import java.net.URL;
 import static com.google.samples.apps.iosched.util.LogUtils.*;
 
 /**
+ * 处理会议数据同步的助手类，所有方法的执行都在调用的线程中执行，所以最好在 子线程中调用。
+ *
  * A helper class for dealing with conference data synchronization. All operations occur on the
  * thread they're called from, so it's best to wrap calls in an {@link android.os.AsyncTask}, or
  * better yet, a {@link android.app.Service}.
@@ -81,6 +83,7 @@ public class SyncHelper {
         requestManualSync(false);
     }
 
+    /** 调用android framework 层来同步数据 */
     public static void requestManualSync(boolean userDataSyncOnly) {
         LOGD(TAG, "Requesting manual sync for account. userDataSyncOnly=" + userDataSyncOnly);
         android.accounts.Account account = Account.getAccount();

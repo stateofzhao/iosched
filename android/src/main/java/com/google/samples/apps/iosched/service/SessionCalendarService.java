@@ -47,6 +47,9 @@ import static com.google.samples.apps.iosched.util.LogUtils.LOGW;
 import static com.google.samples.apps.iosched.util.LogUtils.makeLogTag;
 
 /**
+ *
+ * 后台处理会议日历的服务。<P>
+ *
  * Background {@link android.app.Service} that adds or removes session Calendar events through the
  * {@link CalendarContract} API available in Android 4.0 or above.
  * <p/>

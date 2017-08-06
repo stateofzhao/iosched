@@ -52,7 +52,7 @@ public class DataBootstrapService extends IntentService {
      *                shared preference to mark the process as done is set.
      */
     public static void startDataBootstrapIfNecessary(Context context) {
-        if (!SettingsUtils.isDataBootstrapDone(context)) {
+        if (!SettingsUtils.isDataBootstrapDone(context)) {//通过这里可以看到，直接在主线程中读取了sp文件，看来谷歌也不免俗啊
             LOGW(TAG, "One-time data bootstrap not done yet. Doing now.");
             context.startService(new Intent(context, DataBootstrapService.class));
         }
@@ -69,6 +69,7 @@ public class DataBootstrapService extends IntentService {
     protected void onHandleIntent(Intent intent) {
         Context appContext = getApplicationContext();
 
+        //再次检测是否已经写入过数据了
         if (SettingsUtils.isDataBootstrapDone(appContext)) {
             LOGD(TAG, "Data bootstrap already done.");
             return;
@@ -79,6 +80,8 @@ public class DataBootstrapService extends IntentService {
             String bootstrapJson = JSONHandler
                     .parseResource(appContext, R.raw.bootstrap_data);
 
+            // 将raw下的数据写入到数据库中，这样就可以使用ContentProvider来读取本地数据了，如果不写入的话，
+            // 当使用的时候都需要从raw中读取，而且没有数据库的查询那么方便.
             // Apply the data we read to the database with the help of the ConferenceDataHandler.
             ConferenceDataHandler dataHandler = new ConferenceDataHandler(appContext);
             dataHandler.applyConferenceData(new String[]{bootstrapJson},

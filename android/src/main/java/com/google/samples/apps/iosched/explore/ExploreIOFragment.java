@@ -70,14 +70,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static android.content.SharedPreferences.OnSharedPreferenceChangeListener;
-import static com.google.samples.apps.iosched.settings.ConfMessageCardUtils.ConferencePrefChangeListener;
+import static com.google.samples.apps.iosched.settings.ConfMessageCardUtils
+        .ConferencePrefChangeListener;
 
 /**
  * Display the Explore I/O cards. There are three styles of cards, which are referred to as Groups
  * by the CollectionView implementation.
  * <p/>
- * <ul> <li>The live-streaming session cards.</li> <li>Time sensitive message cards.</li> <li>Session
- * topic cards.</li> </ul>
+ * <ul> <li>The live-streaming session cards.</li> <li>Time sensitive message cards.</li>
+ * <li>Session topic cards.</li> </ul>
  * <p/>
  * Only the final group of cards is dynamically loaded from a {@link
  * android.content.ContentProvider}.
@@ -131,6 +132,7 @@ public class ExploreIOFragment extends Fragment
                 }
             };
 
+    //onCreateView()方法，只是获取View，设置View的一些属性，并未涉及到任何数据处理
     @Override
     public View onCreateView(LayoutInflater inflater,
             ViewGroup container,
@@ -145,6 +147,7 @@ public class ExploreIOFragment extends Fragment
         return root;
     }
 
+    //在Activity的onCreate()方法执行完毕后，才进行数据以及数据相关的工具类的处理
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
@@ -201,7 +204,10 @@ public class ExploreIOFragment extends Fragment
         mListeners.add(toAdd);
     }
 
+    //初始化Presenter
     private void initPresenter() {
+        // Model在View中声明了？ 这么做是因为 整个app中只有一个Presenter，所以需要在Presenter外部声明Model，
+        // 然后传递给Presenter
         ExploreIOModel model = ModelProvider.provideExploreIOModel(
                 getDataUri(ExploreIOQueryEnum.SESSIONS), getContext(),
                 getLoaderManager());
@@ -210,6 +216,7 @@ public class ExploreIOFragment extends Fragment
         presenter.loadInitialQueries();
     }
 
+    //这里很奇怪，会在onResume()中重新刷新菜单
     @Override
     public void onResume() {
         super.onResume();
@@ -223,6 +230,9 @@ public class ExploreIOFragment extends Fragment
         }
     }
 
+    //在此生命周期方法中注册了 ContentProvider 更改的监听，然后会直接回调注册跟本UpdatableView的ActionListener，
+    //这样就能够通知到想监听本UpdatableView的其它UpdatableView。
+    //但是这么做的话不太符合MVP吧，
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
@@ -249,6 +259,7 @@ public class ExploreIOFragment extends Fragment
 
     }
 
+    //取消对一些数据更改的监听
     @Override
     public void onDetach() {
         super.onDetach();
@@ -293,6 +304,8 @@ public class ExploreIOFragment extends Fragment
     }
 
     /**
+     * 这里重点学习一下，看google是怎么处理Adapter的。
+     * <p/>
      * Adapter for providing cards (Messages, Keynote, Live Stream and conference Tracks)
      * for the Explore fragment.
      */
@@ -320,21 +333,27 @@ public class ExploreIOFragment extends Fragment
 
         private final ImageLoader mImageLoader;
 
+        //fixme 这里学习RecyclerView.RecycledViewPool使用，来优化RecyclerView流畅度
         private final RecyclerView.RecycledViewPool mRecycledViewPool;
 
+        // Adapter显示的数据
         // State
         private List mItems;
 
         // Maps of state keyed on track id
         private SparseArrayCompat<UpdatableAdapter> mTrackSessionsAdapters;
 
+        /**
+         * fixme 此处学习如何恢复RecyclerView显示状态
+         */
         private SparseArrayCompat<Parcelable> mTrackSessionsState;
 
         ExploreAdapter(@NonNull Activity activity,
-                       @NonNull ExploreIOModel model,
-                       @NonNull ImageLoader imageLoader) {
+                @NonNull ExploreIOModel model,
+                @NonNull ImageLoader imageLoader) {
             mHost = activity;
             mImageLoader = imageLoader;
+            //inflater来自Activity
             mInflater = LayoutInflater.from(activity);
             mRecycledViewPool = new RecyclerView.RecycledViewPool();
             mItems = processModel(model);
@@ -371,6 +390,7 @@ public class ExploreIOFragment extends Fragment
             }
         }
 
+        // 哈哈，跟我处理的方式一样
         @Override
         public int getItemViewType(final int position) {
             final Object item = mItems.get(position);
@@ -385,6 +405,7 @@ public class ExploreIOFragment extends Fragment
             } else if (item instanceof EventData) {
                 return TYPE_EVENT_DATA;
             }
+            //这种方式好，即使崩溃了也能够记录上，很好的找到哪里出问题了
             throw new IllegalArgumentException("Unknown view type.");
         }
 
@@ -428,13 +449,6 @@ public class ExploreIOFragment extends Fragment
             }
         }
 
-        private void bindEventData(final EventDataViewHolder holder, final EventData eventData) {
-            int trackId = getTrackId(eventData);
-            holder.cards.setAdapter(mTrackSessionsAdapters.get(trackId));
-            holder.cards.getLayoutManager().onRestoreInstanceState(
-                    mTrackSessionsState.get(trackId));
-        }
-
         @Override
         public void onViewRecycled(final RecyclerView.ViewHolder holder) {
             if (holder instanceof TrackViewHolder) {
@@ -455,7 +469,15 @@ public class ExploreIOFragment extends Fragment
             return mItems.size();
         }
 
-        private @NonNull
+        private void bindEventData(final EventDataViewHolder holder, final EventData eventData) {
+            int trackId = getTrackId(eventData);
+            holder.cards.setAdapter(mTrackSessionsAdapters.get(trackId));
+            holder.cards.getLayoutManager().onRestoreInstanceState(
+                    mTrackSessionsState.get(trackId));
+        }
+
+        private
+        @NonNull
         EventDataViewHolder createEventViewHolder(final ViewGroup parent) {
             final EventDataViewHolder
                     holder = new EventDataViewHolder(
@@ -469,7 +491,9 @@ public class ExploreIOFragment extends Fragment
             return holder;
         }
 
-        private @NonNull TrackViewHolder createTrackViewHolder(final ViewGroup parent) {
+        private
+        @NonNull
+        TrackViewHolder createTrackViewHolder(final ViewGroup parent) {
             final TrackViewHolder holder = new TrackViewHolder(
                     mInflater.inflate(R.layout.explore_io_track_card, parent, false));
             holder.sessions.setHasFixedSize(true);
@@ -480,7 +504,9 @@ public class ExploreIOFragment extends Fragment
                 @Override
                 public void onClick(final View v) {
                     final int position = holder.getAdapterPosition();
-                    if (position == RecyclerView.NO_POSITION) return;
+                    if (position == RecyclerView.NO_POSITION) {
+                        return;
+                    }
                     final ItemGroup track = (ItemGroup) mItems.get(position);
                     final Intent intent = new Intent(mHost, ExploreSessionsActivity.class);
                     intent.putExtra(ExploreSessionsActivity.EXTRA_FILTER_TAG, track.getId());
@@ -499,7 +525,9 @@ public class ExploreIOFragment extends Fragment
             return holder;
         }
 
-        private @NonNull MessageViewHolder createMessageViewHolder(final ViewGroup parent) {
+        private
+        @NonNull
+        MessageViewHolder createMessageViewHolder(final ViewGroup parent) {
             final MessageViewHolder holder = new MessageViewHolder(
                     mInflater.inflate(R.layout.explore_io_message_card, parent, false));
             // Work with pre-existing infrastructure which supplied a click listener and relied on
@@ -510,7 +538,9 @@ public class ExploreIOFragment extends Fragment
                 @Override
                 public void onClick(final View v) {
                     final int position = holder.getAdapterPosition();
-                    if (position == RecyclerView.NO_POSITION) return;
+                    if (position == RecyclerView.NO_POSITION) {
+                        return;
+                    }
                     final MessageData message = (MessageData) mItems.get(position);
                     message.getStartButtonClickListener().onClick(holder.buttonStart);
                     mItems.remove(position);
@@ -521,7 +551,9 @@ public class ExploreIOFragment extends Fragment
                 @Override
                 public void onClick(final View v) {
                     final int position = holder.getAdapterPosition();
-                    if (position == RecyclerView.NO_POSITION) return;
+                    if (position == RecyclerView.NO_POSITION) {
+                        return;
+                    }
                     final MessageData message = (MessageData) mItems.get(position);
                     message.getEndButtonClickListener().onClick(holder.buttonEnd);
                     mItems.remove(position);
@@ -531,14 +563,18 @@ public class ExploreIOFragment extends Fragment
             return holder;
         }
 
-        private @NonNull KeynoteViewHolder createKeynoteViewHolder(final ViewGroup parent) {
+        private
+        @NonNull
+        KeynoteViewHolder createKeynoteViewHolder(final ViewGroup parent) {
             final KeynoteViewHolder holder = new KeynoteViewHolder(
                     mInflater.inflate(R.layout.explore_io_keynote_card, parent, false));
             holder.clickableItem.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(final View v) {
                     final int position = holder.getAdapterPosition();
-                    if (position == RecyclerView.NO_POSITION) return;
+                    if (position == RecyclerView.NO_POSITION) {
+                        return;
+                    }
                     final SessionData keynote = (SessionData) mItems.get(position);
                     final Intent intent = new Intent(mHost, SessionDetailActivity.class);
                     intent.setData(
@@ -556,7 +592,9 @@ public class ExploreIOFragment extends Fragment
             return holder;
         }
 
-        private @NonNull TrackViewHolder createLiveStreamViewHolder(final ViewGroup parent) {
+        private
+        @NonNull
+        TrackViewHolder createLiveStreamViewHolder(final ViewGroup parent) {
             final TrackViewHolder holder = new TrackViewHolder(
                     mInflater.inflate(R.layout.explore_io_track_card, parent, false));
             ViewCompat.setImportantForAccessibility(
@@ -580,6 +618,7 @@ public class ExploreIOFragment extends Fragment
 
         private void bindMessage(final MessageViewHolder holder, final MessageData message) {
             holder.description.setText(message.getMessageString(mHost));
+            //这里也是直接控制显隐的，没有额外生成ViewHolder
             if (message.getIconDrawableId() > 0) {
                 holder.icon.setVisibility(View.VISIBLE);
                 holder.icon.setImageResource(message.getIconDrawableId());
@@ -673,6 +712,9 @@ public class ExploreIOFragment extends Fragment
         }
 
         /**
+         * 设置点击item后需要显示的列表的适配器。
+         * <p/>
+         * <p>
          * Setup adapters for tracks which have child session lists
          */
         private void setupSessionAdapters(final ExploreIOModel model) {
@@ -691,7 +733,7 @@ public class ExploreIOFragment extends Fragment
 
             final EventData eventData = model.getEventData();
             if (eventData != null && eventData.getCards() != null &&
-            eventData.getCards().size() > 0) {
+                    eventData.getCards().size() > 0) {
                 mTrackSessionsAdapters.put(getTrackId(eventData),
                         new EventDataAdapter(mHost, eventData.getCards()));
             }
@@ -713,12 +755,15 @@ public class ExploreIOFragment extends Fragment
             } else if (track instanceof EventData) {
                 return EVENT_DATA_TRACK_ID;
             } else if (track instanceof ItemGroup) {
-                return ((ItemGroup)track).getId().hashCode();
+                return ((ItemGroup) track).getId().hashCode();
             }
             return 0;
         }
     }
 
+    /**
+     * 此处没有让ViewHolder承载过多的东西，仅仅只有findView的功能
+     */
     private static class EventDataViewHolder extends RecyclerView.ViewHolder {
 
         final CardView card;

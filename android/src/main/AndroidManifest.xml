@@ -14,6 +14,14 @@
   See the License for the specific language governing permissions and
   limitations under the License.
   -->
+
+<!--
+iosched的项目目录很有意思，竟然有两个 “工程文件” ：main 和 mapEditor ，并且者两个文件下都独自有各自的
+一套Android项目 目录，而且java目录下包名竟然还是一样的，并且代码上也可以互相调用到，真是稀奇。
+这里有一个疑问，两个独立的Manifest.xml清单文件会在编译后合成一个吗？
+-->
+
+
 <manifest package="com.google.samples.apps.iosched"
           xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools"
@@ -98,14 +106,18 @@
             android:value="@string/maps_api_key" />
 
         <!-- Activities -->
-
         <activity
             android:name=".explore.ExploreIOActivity"
             android:label="@string/app_name"
             android:theme="@style/Theme.IOSched.Light">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <!--<action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />-->
+
+                <action android:name="android.intent.action.MAIN"/>
+
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             <!-- Web URLs -->
             <intent-filter

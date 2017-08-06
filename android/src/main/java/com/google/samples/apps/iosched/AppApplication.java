@@ -32,6 +32,8 @@ import static com.google.samples.apps.iosched.util.LogUtils.LOGW;
 import static com.google.samples.apps.iosched.util.LogUtils.makeLogTag;
 
 /**
+ * 在此处进行代码初始化是极少的，因为当ContentProvider、Activity或者Service被用户或者系统调用时，都会执行此初始化方法,所以尽量不要在此处进行一些非必要的初始化
+ * <p>
  * {@link android.app.Application} used to initialize Analytics. Code initialized in Application
  * classes is rare since this code will be run any time a ContentProvider, Activity, or Service is
  * used by the user or system. Analytics, dependency injection, and multi-dex frameworks are in this
@@ -49,9 +51,10 @@ public class AppApplication extends MultiDexApplication {
         // Initialize the Firebase library with an Android context.
         Firebase.setAndroidContext(this);
 
-        AnalyticsHelper.prepareAnalytics(getApplicationContext());
-        SettingsUtils.markDeclinedWifiSetup(getApplicationContext(), false);
+        AnalyticsHelper.prepareAnalytics(getApplicationContext());//初始化分析工具
+        SettingsUtils.markDeclinedWifiSetup(getApplicationContext(), false);//此处应该学习，将配置写到了一个工具类里面
 
+        //下面是安全方面的知识，先略过
         // Ensure an updated security provider is installed into the system when a new one is
         // available via Google Play services.
         try {

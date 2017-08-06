@@ -20,6 +20,30 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 
 /**
+ * 在这里，Model层竟然抽象成了一个接口。可见Model一定不是java Bean 这么简单。
+ * <p/>
+ * Model 用来操作和存储数据，同时也提供了获取数据的方法。它给Presenter提供了一个接口，
+ * 来让Presenter加载和更新Model中的数据。
+ * <p/>
+ * 它使用{@link QueryEnum}（它能够处理的查询列表，就是它能够理解的一些查询操作，其实说白了就是 请求数据 时的“协议”，
+ * 例如 url 来请求网络数据；能够从ContentProvider中获取数据的Uri等）
+ * 和{@link UserActionEnum}（它能够处理的 用户操作，比如某个UserActionEnum让它来删除一些数据）来作为参数。
+ * <p/>
+ * 通常情况下，一旦{@link Presenter}被创建，就会调用{@link #requestData(QueryEnum, DataQueryCallback)}
+ * 来请求初始数据到Model中。本接口并没有定义Model如何来获取它自己的数据，但是它的一个实现类{@link ModelWithLoaderManager}
+ * 提供了 通过{@link android.content.CursorLoader}从
+ * {@link com.google.samples.apps.iosched.provider.ScheduleProvider}获取数据的操作。将来并不是仅仅通过
+ * 上述方式来获取数据，但是现在很多数据都是这么获取的。
+ * <p/>
+ * 另外，当接收到一个{@link UserActionEnum}后，Model会同时更新 已经存储到本地的数据和它自己的数据，一般是通过
+ * 触发{@link com.google.samples.apps.iosched.provider.ScheduleProvider}的 update 或者 insert 操作来实现的。
+ * <p/>
+ *
+ * 通过上面的解释，可以看到，Model并不仅仅表示Java Bean，而是封装了对 特定数据的操作（查，通过QueryEnum来触发，
+ * 增、删、改通过UserActionEnum来实现），但是它并没有提供业务逻辑，我估计业务逻辑需要根据具体业务再写一个 接口，
+ * 或者直接写到 Presenter 中？
+ * <p/>
+ *
  * A Model is a class used to manipulate stored data, as well as provide getters for the data. It
  * provides the {@link Presenter} with an interface through which to load and update the data (MVP
  * architectural pattern).

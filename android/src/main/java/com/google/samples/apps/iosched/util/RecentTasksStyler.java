@@ -27,6 +27,8 @@ import android.support.v4.content.ContextCompat;
 import com.google.samples.apps.iosched.R;
 
 /**
+ * 最近任务列表帮助类，就是用户按下 “多任务键” 后显示出来的
+ *
  * Helper class that applies the proper icon, title and background color to recent tasks list.
  */
 public class RecentTasksStyler {

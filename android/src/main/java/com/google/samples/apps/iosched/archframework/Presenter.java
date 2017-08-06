@@ -15,7 +15,43 @@
  */
 package com.google.samples.apps.iosched.archframework;
 
+/*
+ * 在iosched中并不是所有地方都是采用的MVP，比如在BaseActivity中处理的一些通用 数据初始化，数据请求，并没有
+ * 采用MVP，其实我认为也该如此，并不是说采用MVP就要什么地方都要套用，我觉着具体页面来处理具体业务时才需要采用
+ * MVP，一些通用的数据处理（并没有具体化到哪个页面）没必要采用MVP。
+ */
+
+/*
+ * 怎么觉着此处的MVP有点强加的味道呢，Presenter并没有任何的主动性更改Model的方法，而仅仅只有一个 各个页面
+ * 通用的初始化加载方法，其它任何需要由View触发的操作直接 被Presenter 传递给Model来实现，在这个过程中
+ * Presenter仅仅起到一个 调用的作用，并且这个 能够被View调用的方法，还是因为实现了View的UserActionListener来实现的。
+ * 所以才能在整个App中只有一个Presenter实现类即可，其它任何的不同仅由 View和Model 来承担了。
+ *
+ */
+
+/*
+ * 这个Presenter有点“薄”，没有对View做过多的调用，比如显示进度条，隐藏进度条这些。
+ *
+ *
+ */
+
+
+
 /**
+ * Presenter是{@link UpdatableView}（通常是一个Fragment）和{@link Model}的控制器。
+ * <p/>
+ * 使用{@link QueryEnum}（传递给Model需要处理的查询列表）和{@link UserActionEnum}（传递给Model需要响应
+ * 用户操作列表）作为参数。
+ * <p/>
+ * 通常情况下，Presenter一旦被创建，Presenter就会请求Model来加载初始化数据然后来更新View。
+ * <p/>
+ * Presenter通过实现{@link UpdatableView}中声明的{@link com.google.samples.apps.iosched.archframework.UpdatableView.UserActionListener}
+ * 接口来监听{@link UpdatableView}发出的用户操作，然后传递给{@link Model}来按照操作修改数据。
+ * Presenter同时也会实现在{@link Model}中声明的{@link com.google.samples.apps.iosched.archframework.Model.DataQueryCallback}
+ * 和{@link com.google.samples.apps.iosched.archframework.Model.UserActionCallback}接口，然后通过调用
+ * {@link UpdatableView#displayUserActionResult(Object, UserActionEnum, boolean)}通知{@link UpdatableView}来更新自己.
+ * <p/>
+ *
  * A Presenter acts as a controller for both the {@link UpdatableView} (typically a fragment) and
  * the {@link Model} for the MVP architectural pattern.
  * <p/>

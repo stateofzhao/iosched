@@ -60,6 +60,7 @@ public abstract class WelcomeFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        //获取父Activity中的View？
         TextView titleTV = (TextView) getActivity().findViewById(R.id.title);
 
         if (titleTV != null) {

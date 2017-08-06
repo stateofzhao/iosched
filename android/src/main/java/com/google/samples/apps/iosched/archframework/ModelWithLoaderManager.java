@@ -99,6 +99,8 @@ public abstract class ModelWithLoaderManager<Q extends QueryEnum, UA extends Use
     @VisibleForTesting
     protected HashMap<Integer, UA> mUserActionsLaunchingQueries = new HashMap<Integer, UA>();
 
+    // 需要传递LoaderManager，这样本Model中的Loader就会与外部Activity/Fragment关联起来，这样android framework就
+    // 能够自动控制Loader的销毁，重启等声明周期了。
     public ModelWithLoaderManager(Q[] queries, UA[] userActions, LoaderManager loaderManager) {
         mQueries = queries;
         mUserActions = userActions;

@@ -133,6 +133,9 @@ public class WelcomeActivity extends AppCompatActivity
     }
 
     /**
+     * 这里直接返回了所有需要在 WelcomeActivity中显示的Fragment，但是只是new出来，并没有执行生命周期方法，
+     * 故而只是当作普通java类来使用，所以并不会占用过多内存。学习了
+     *
      * Returns all fragments displayed by {@link WelcomeActivity}.
      */
     private static List<WelcomeFragment> getWelcomeFragments() {

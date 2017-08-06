@@ -31,6 +31,11 @@ import com.google.samples.apps.iosched.util.AnalyticsHelper;
 import static com.google.samples.apps.iosched.util.LogUtils.makeLogTag;
 
 /**
+ * 此处Activity的职责仅仅是
+ * 1. 处理打开动画
+ * 2. 处理DrawerLayout
+ * 3. 处理Toolbar上的Menu
+ *
  * Display a summary of what is happening at Google I/O this year. Theme and topic cards are
  * displayed based on the session data. Conference messages are also displayed as cards..
  */
@@ -65,6 +70,7 @@ public class ExploreIOActivity extends BaseActivity implements Toolbar.OnMenuIte
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
 
+        //向Toolbar上添加菜单
         // Add the search button to the toolbar.
         Toolbar toolbar = getToolbar();
         toolbar.inflateMenu(R.menu.explore_io_menu);

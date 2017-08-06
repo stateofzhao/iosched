@@ -58,6 +58,10 @@ import static com.google.samples.apps.iosched.util.LogUtils.LOGE;
 import static com.google.samples.apps.iosched.util.LogUtils.makeLogTag;
 
 /**
+ * 此处涉及到了Activity与Fragment交互，学习下。
+ * <p/>
+ * <p>
+ * <p>
  * This shows the schedule of the logged in user, organised per day.
  * <p/>
  * Depending on the device, this Activity uses either a {@link ViewPager} with a {@link
@@ -177,8 +181,10 @@ public class MyScheduleActivity extends BaseActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //fixme 此处能够设置两种Layout?
         setContentView(R.layout.my_schedule_act);
 
+        //判断是否需要跳转到下一个Activity
         launchSessionDetailIfRequiredByIntent(getIntent());
 
         // ANALYTICS SCREEN: View the My Schedule screen
@@ -296,6 +302,11 @@ public class MyScheduleActivity extends BaseActivity implements
                     MyScheduleModel.MyScheduleQueryEnum.values());
             mPresenter.loadInitialQueries();
         } else {
+
+            //fixme 这里要学习
+            //这里虽然将Fragment实例化出来了，但是并没有添加到Activity/Fragment中
+            // （即使添加了也不一定就执行完了onCreateView()方法），所以如果初始化完了数据，回调Fragment中的
+            // 方法该如何处理？
             // Each fragment in the pager adapter is an updatable view that the presenter must know
             MyScheduleSingleDayFragment[] fragments = mViewPagerAdapter.getFragments();
             UpdatableView[] views = new UpdatableView[fragments.length];
@@ -305,6 +316,12 @@ public class MyScheduleActivity extends BaseActivity implements
             mPresenter = new PresenterImpl(model, views,
                     MyScheduleModel.MyScheduleUserActionEnum.values(),
                     MyScheduleModel.MyScheduleQueryEnum.values());
+            //解决上面的疑问。并没有在这里直接进行初始化请求，因为如果直接在这里请求，就会出现上面说的问题。
+            // 那么什么时候开启请求呢？
+            //在各自的Fragment（实现了UpdatableView接口）中执行到onResume()方法时，回调 添加到其中的
+            // UserActionListener（在PresenterImpl的构造函数中会将实现了UserActionListener接口的PresenterImpl
+            // 注册给每个UpdatableView）的onUserAction()方法，这样就实现了在合适的时机来开启数据请求。
+
         }
     }
 

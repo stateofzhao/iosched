@@ -66,7 +66,42 @@ import static com.google.samples.apps.iosched.util.LogUtils.LOGE;
 import static com.google.samples.apps.iosched.util.LogUtils.LOGW;
 import static com.google.samples.apps.iosched.util.LogUtils.makeLogTag;
 
+/*
+ *
+ * ContentResolver对ContentProvider的操作是单线程模式的，就是会排队来一个一个处理
+ *
+ * 这里先简单说一下iosched的数据加载是如何实现的。
+ * 1. 大部分的数据都是来自本地的，只有少部分数据是从网络上获取的（地图覆盖物的SVG图），但是目前来看，连这个SVG图也都是本地获取的。
+ *
+ * 2. 数据的处理是通过 ContentProvider 来实现的。
+ *
+ * 3. 首先在BaseActivity中的onResume()方法中读取 工程目录中raw 数据文件，
+ * 然后将读取的数据处理完成后（转换成java Bean）通过ContentProvider插入到数据库中。并且这个过程是异步的。
+ *
+ * 4. 第3步插入完成后，会调用ContentResolver的notify()方法来通知系统数据更新了，
+ * 这样就能够让系统通知Cursor来重新加载数据（这个自动通知的过程是如何实现的呢？
+ * 当通过ContentResolver调用ContentProvider 的 query()方法时，query()方法会在内部查询数据库，生成一个Cursor，
+ * 并且会调用生成的Cursor的setNotificationUri()方法，这个方法内部会将Cursor的内部类SelfContentObserver
+ * 注册给ContentResolver，这样当ContentProvider中数据更新时，比如ContentProvider的delete()方法，在delete()
+ * 方法中会执行 ContentResolver的notifyChange()方法，这样就触发了Cursor中相关方法，
+ * 导致CursorLoader重新加载数据【这个过程还没有深入研究】）。
+ *
+ * 5. 如何解决  当正在 初始化插入本地数据时，请求了ContentProvider中的数据，会直接显示空白，然后等本地数据插入完成后再显示出来吗？
+ * 是这么做的，在onResume()中发起数据请求，然后会判断ContentResolver 是否正在 处理数据，如果正在处理就会设置
+ * 刷新布局为 刷新状态（子类会在CursorLoader加载完成后来处理停止刷新状态），//todo
+ *
+ * 6.
+ *
+ *
+ *
+ */
+
+
 /**
+ * 基类Activity，封装了一些常见功能。包括，导航抽屉、登录认证、Action Bar的调整、以及其它操作。
+ * 在onResume()开启数据加载；在onPause()去除了对数据加载的回调，但是并没有停止数据加载
+ * <p>
+ * <p>
  * A base activity that handles common functionality in the app. This includes the navigation
  * drawer, login and authentication, Action Bar tweaks, amongst others.
  */
@@ -84,9 +119,11 @@ public abstract class BaseActivity extends AppCompatActivity implements
     // the LoginAndAuthHelper handles signing in to Google Play Services and OAuth
     private LoginAndAuth mLoginAndAuthProvider;
 
+    // todo 这里需要重点关注一下，这里采用MVP的模式来实现的
     // Navigation drawer
     private AppNavigationViewAsDrawerImpl mAppNavigationViewAsDrawer;
 
+    //封装了对Toolbar的统一处理，并没有给BaseActivity设置contentView，而是根据一个约定的id来获取Toolbar
     // Toolbar
     private Toolbar mToolbar;
 
@@ -98,6 +135,7 @@ public abstract class BaseActivity extends AppCompatActivity implements
     // SwipeRefreshLayout allows the user to swipe the screen down to trigger a manual refresh
     private SwipeRefreshLayout mSwipeRefreshLayout;
 
+    // 使用GCM来处理推送
     // Registration with GCM for notifications
     private MessagingRegistration mMessagingRegistration;
 
@@ -109,16 +147,18 @@ public abstract class BaseActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         RecentTasksStyler.styleRecentTasksEntry(this);
 
+        // 学习这种将是否显示 说明页  的处理方式
         // Check if the EULA has been accepted; if not, show it.
         if (WelcomeActivity.shouldDisplay(this)) {
             Intent intent = new Intent(this, WelcomeActivity.class);
             startActivity(intent);
-            finish();
+            finish();//原来谷歌也在这么干
             return;
         }
 
         mMessagingRegistration = MessagingRegistrationProvider.provideMessagingRegistration(this);
 
+        //添加同步账号到Android系统中
         Account.createSyncAccount(this);
 
         if (savedInstanceState == null) {
@@ -168,6 +208,8 @@ public abstract class BaseActivity extends AppCompatActivity implements
     public void setContentView(int layoutResID) {
         super.setContentView(layoutResID);
         getToolbar();
+        //注意，在这个方法中处理Toolbar，因为调用者很可能会在onCreate()方法中调用Toolbar相关方法，所以
+        //不能放到onPostCreate()方法中处理，因为onPostCreate()会在onStart()方法后才回调
     }
 
     @Override
@@ -199,6 +241,7 @@ public abstract class BaseActivity extends AppCompatActivity implements
         }
     }
 
+    //将对View的设置放到这个方法中比较好，这个方法执行能够表明 onCreate()方法已经彻底执行完毕了，所以可以放心的在这里获取View并对View进行设置
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
@@ -238,6 +281,7 @@ public abstract class BaseActivity extends AppCompatActivity implements
         return super.onOptionsItemSelected(item);
     }
 
+    /** 让android framework 执行数据同步，不再是从本地数据库中获取数据 */
     protected void requestDataRefresh() {
         android.accounts.Account activeAccount = AccountUtils.getActiveAccount(this);
         ContentResolver contentResolver = getContentResolver();
@@ -324,6 +368,7 @@ public abstract class BaseActivity extends AppCompatActivity implements
     protected void onResume() {
         super.onResume();
 
+        // 初始化本地数据到数据库中，是否初始化完成是放到了 SharedPreferences中来标记的
         // Perform one-time bootstrap setup, if needed
         DataBootstrapService.startDataBootstrapIfNecessary(this);
 
@@ -335,6 +380,8 @@ public abstract class BaseActivity extends AppCompatActivity implements
             return;
         }
 
+        // 监听数据的同步状态，如果是同步中或者在同步队列中，那么就会改变刷新View的显示状态。
+        // 注意，这里并没有做开启数据请求的处理，仅仅是维护了一个刷新View的显示状态。
         // Watch for sync state changes
         mSyncStatusObserver.onStatusChanged(0);
         final int mask = ContentResolver.SYNC_OBSERVER_TYPE_PENDING |
@@ -507,6 +554,7 @@ public abstract class BaseActivity extends AppCompatActivity implements
         mAppNavigationViewAsDrawer.updateNavigationItems();
     }
 
+    /** 更新所有依赖于账户的数据 */
     protected void refreshAccountDependantData() {
         // Force local data refresh for data that depends on the logged user:
         LOGD(TAG, "Refreshing User Data");
@@ -583,6 +631,7 @@ public abstract class BaseActivity extends AppCompatActivity implements
 
                     android.accounts.Account account = new android.accounts.Account(
                             accountName, GoogleAuthUtil.GOOGLE_ACCOUNT_TYPE);
+                    //如果正在执行同步，那么就让当前页面的刷新布局置为 下拉刷新 状态
                     boolean syncActive = ContentResolver.isSyncActive(
                             account, ScheduleContract.CONTENT_AUTHORITY);
                     onRefreshingStateChanged(syncActive);
@@ -591,8 +640,10 @@ public abstract class BaseActivity extends AppCompatActivity implements
         }
     };
 
+    /** 仅仅用来改变刷新View的显示状态，不会触发数据请求 */
     protected void onRefreshingStateChanged(boolean refreshing) {
         if (mSwipeRefreshLayout != null) {
+            //调用这个方法不会触发给 SwipeRefreshLayout 注册的刷新监听方法
             mSwipeRefreshLayout.setRefreshing(refreshing);
         }
     }

@@ -29,6 +29,9 @@ import static com.google.samples.apps.iosched.util.LogUtils.LOGE;
 import static com.google.samples.apps.iosched.util.LogUtils.makeLogTag;
 
 /**
+ * fixme 学习FragmentPageAdapter的使用，学习如何缓存 Fragment。如何处理“配置改变”Fragment的恢复与保存
+ * <p/>
+ *
  * The {@link MyScheduleActivity} uses a {@link android.support.v4.view.ViewPager} in narrow mode,
  * where each page shows the schedule for the day, using a {@link MyScheduleSingleDayFragment}.
  */
@@ -89,6 +92,8 @@ public class MyScheduleDayViewPagerAdapter extends FragmentPagerAdapter {
     }
 
     /**
+     * 此处会获取所有Fragment，但是会调用getItem(int)方法来实例化出Fragment。
+     *
      * @return all the cached {@link MyScheduleSingleDayFragment}s used by this Adapter.
      */
     public MyScheduleSingleDayFragment[] getFragments() {

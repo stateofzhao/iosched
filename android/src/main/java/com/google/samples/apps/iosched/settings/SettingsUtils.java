@@ -31,6 +31,14 @@ import java.util.TimeZone;
 import static com.google.samples.apps.iosched.util.LogUtils.makeLogTag;
 
 /**
+ *
+ * <P>app配置文件管理工具，用来管理对app进行设置的保存。
+ * 此类并没有持有SharedPreference，而是每个方法都会去重新获取SharedPreference.
+ * <P/>
+ *
+ * <P>据代码观测，读取配置时，也是直接在主线程中读取的<P/>
+ *
+ *
  * Utilities and constants related to app settings_prefs.
  */
 public class SettingsUtils {
@@ -280,6 +288,8 @@ public class SettingsUtils {
     }
 
     /**
+     * 标记用户是否已经明确拒绝链接WiFi的提示<P>
+     *
      * Mark that the user has explicitly declined WiFi setup assistance.
      *
      * @param context  Context to be used to edit the {@link android.content.SharedPreferences}.
