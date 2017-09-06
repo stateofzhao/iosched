@@ -101,6 +101,29 @@ public abstract class ModelWithLoaderManager<Q extends QueryEnum, UA extends Use
 
     // 需要传递LoaderManager，这样本Model中的Loader就会与外部Activity/Fragment关联起来，这样android framework就
     // 能够自动控制Loader的销毁，重启等声明周期了。
+    
+    //其实在本抽象Model中，deliverUserAction()方法处理的并不好，完全可以在deliverUserAction()方法中接管所有loader
+    //的请求执行。具体为啥说处理的不好，可以参考下面的解释。
+    //====================================================================================================
+    
+    //现在才真正明白，为什么这里要传递进来 着两个数组。
+    // 我之前的理解一直是：既然Model中已经提前定义了着两个数组，那么完全不必要再多此一举，
+    // 使用的时候直接调用 Model#requestData(Model#queryEnum,Callback)即可，
+    // Model#deliverUserAction(Model#userAction,args,callback)即可。
+
+    //然后上述理解完全是错误的！其实QueryEnum不单单是用来唯一标记的，它还有一个重要的使命就是携带请求需要的数据。
+    // 同理UserActionEnum也不单单是用来唯一区别用户操作的，它也有一个重要的使命就是携带执行用户操作需要的数据。
+    // 明白了 QueryEnum和UserActionEnum 的真正意义后，我们再来看为什么要在构造函数传递这两个参数，因为如果
+    // 不传递这两个参数，Model就不能够区分执行requestData(QueryEnum q)方法时，【参数q是否是它应该来处理的】，因为
+    // Model执行requestData(QueryEnum q)时能够处理所有QueryEnum类型的参数，Model只需要获取q携带的请求数据
+    // 来开启请求即可；同理deliverUserAction(UserActionEnum ua)方法也是如此。
+
+    //明白了真正的含义后，那么也应该明白，这样处理才能够开发出通用Model，比如本Model，
+    // 就不需要自己来定义具体的QueryEnum[]，我们仅仅需要在requestData()方法中获取到QueryEnum携带的数据来执行请求即可。
+    // 同理也不需要定义具体的UserActionEnum[]，在deliverUserAction()方法中，我们获取UserActionEnum携带的数据来执行
+    // 操作即可。这样本Model的子类就能够自由的定义自己的QueryEnum[] 和 UserActionEnum[] 即可。【而本Model仅仅是定义了
+    // requestData()方法中请求数据的规则===>CommHttpTask中的init请求规则 和 deliverUserAction()方法中执
+    // 行用户操作请求的规则===>CommHttpTask中的 Refresh/LoadMore 规则】。
     public ModelWithLoaderManager(Q[] queries, UA[] userActions, LoaderManager loaderManager) {
         mQueries = queries;
         mUserActions = userActions;
@@ -172,6 +195,12 @@ public abstract class ModelWithLoaderManager<Q extends QueryEnum, UA extends Use
     public abstract void processUserAction(UA action, @Nullable Bundle args,
             UserActionCallback callback);
 
+    /**
+     * 这里看到针对query进行了“范围”检测，如果没有包含在给定的QueryEnum[]内，那么直接回调错误接口，
+     * 但是在deliverUserAction()方法中却并没有对UserActionEnum进行“范围”检测，那是因为在deliverUserAction()
+     * 方法中针对args额外添加了一个行为，这个额外添加的行为并不在UserActionEnum[]内，如果args中传递了指定的键值对应的值，
+     * 会直接忽略方法参数中的UserActionEnum，所以此时再进行“范围”检测就不好了。
+     */
     @Override
     public void requestData(@NonNull Q query, @NonNull DataQueryCallback callback) {
         checkNotNull(query);
